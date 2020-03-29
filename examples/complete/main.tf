@@ -1,11 +1,11 @@
 module "codedeploy" {
   source                     = "../../"
   name                       = "example"
-  ecs_cluster_name           = "${aws_ecs_cluster.example.name}"
-  ecs_service_name           = "${module.ecs_fargate.ecs_service_name}"
+  ecs_cluster_name           = aws_ecs_cluster.example.name
+  ecs_service_name           = module.ecs_fargate.ecs_service_name
   lb_listener_arns           = ["${module.alb.http_alb_listener_arn}"]
-  blue_lb_target_group_name  = "${module.alb.alb_target_group_name}"
-  green_lb_target_group_name = "${aws_lb_target_group.green.name}"
+  blue_lb_target_group_name  = module.alb.alb_target_group_name
+  green_lb_target_group_name = aws_lb_target_group.green.name
 
   auto_rollback_enabled            = true
   auto_rollback_events             = ["DEPLOYMENT_FAILURE"]
@@ -24,14 +24,14 @@ module "codedeploy" {
 module "ecs_fargate" {
   source                    = "git::https://github.com/tmknom/terraform-aws-ecs-fargate.git?ref=tags/1.0.0"
   name                      = "codedeploy-for-ecs"
-  container_name            = "${local.container_name}"
-  container_port            = "${local.container_port}"
-  cluster                   = "${aws_ecs_cluster.example.arn}"
+  container_name            = local.container_name
+  container_port            = local.container_port
+  cluster                   = aws_ecs_cluster.example.arn
   subnets                   = ["${module.vpc.public_subnet_ids}"]
-  target_group_arn          = "${module.alb.alb_target_group_arn}"
-  vpc_id                    = "${module.vpc.vpc_id}"
-  container_definitions     = "${data.template_file.default.rendered}"
-  ecs_task_execution_policy = "${data.aws_iam_policy.ecs_task_execution.policy}"
+  target_group_arn          = module.alb.alb_target_group_arn
+  vpc_id                    = module.vpc.vpc_id
+  container_definitions     = data.template_file.default.rendered
+  ecs_task_execution_policy = data.aws_iam_policy.ecs_task_execution.policy
 
   desired_count                     = 1
   assign_public_ip                  = true
@@ -40,17 +40,17 @@ module "ecs_fargate" {
 }
 
 data "template_file" "default" {
-  template = "${file("${path.module}/container_definitions.json")}"
+  template = file("${path.module}/container_definitions.json")
 
   vars {
-    container_name = "${local.container_name}"
-    container_port = "${local.container_port}"
+    container_name = local.container_name
+    container_port = local.container_port
   }
 }
 
 locals {
   container_name = "example"
-  container_port = "${module.alb.alb_target_group_port}"
+  container_port = module.alb.alb_target_group_port
 }
 
 resource "aws_ecs_cluster" "example" {
@@ -63,8 +63,8 @@ data "aws_iam_policy" "ecs_task_execution" {
 
 resource "aws_lb_target_group" "green" {
   name        = "green"
-  vpc_id      = "${module.vpc.vpc_id}"
-  port        = "${local.container_port}"
+  vpc_id      = module.vpc.vpc_id
+  port        = local.container_port
   protocol    = "HTTP"
   target_type = "ip"
 }
@@ -72,9 +72,9 @@ resource "aws_lb_target_group" "green" {
 module "alb" {
   source                     = "git::https://github.com/tmknom/terraform-aws-alb.git?ref=tags/1.4.1"
   name                       = "codedeploy-for-ecs"
-  vpc_id                     = "${module.vpc.vpc_id}"
+  vpc_id                     = module.vpc.vpc_id
   subnets                    = ["${module.vpc.public_subnet_ids}"]
-  access_logs_bucket         = "${module.s3_lb_log.s3_bucket_id}"
+  access_logs_bucket         = module.s3_lb_log.s3_bucket_id
   enable_https_listener      = false
   enable_http_listener       = true
   enable_deletion_protection = false
@@ -83,7 +83,7 @@ module "alb" {
 module "s3_lb_log" {
   source                = "git::https://github.com/tmknom/terraform-aws-s3-lb-log.git?ref=tags/1.0.0"
   name                  = "s3-lb-log-codedeploy-for-ecs-${data.aws_caller_identity.current.account_id}"
-  logging_target_bucket = "${module.s3_access_log.s3_bucket_id}"
+  logging_target_bucket = module.s3_access_log.s3_bucket_id
   force_destroy         = true
 }
 
@@ -95,7 +95,7 @@ module "s3_access_log" {
 
 module "vpc" {
   source                    = "git::https://github.com/tmknom/terraform-aws-vpc.git?ref=tags/1.0.0"
-  cidr_block                = "${local.cidr_block}"
+  cidr_block                = local.cidr_block
   name                      = "codedeploy-for-ecs"
   public_subnet_cidr_blocks = ["${cidrsubnet(local.cidr_block, 8, 0)}", "${cidrsubnet(local.cidr_block, 8, 1)}"]
   public_availability_zones = ["${data.aws_availability_zones.available.names}"]
