@@ -23,7 +23,7 @@ resource "aws_codedeploy_deployment_group" "default" {
     enabled = var.auto_rollback_enabled
 
     # The event type or types that trigger a rollback. Supported types are DEPLOYMENT_FAILURE and DEPLOYMENT_STOP_ON_ALARM.
-    events = ["${var.auto_rollback_events}"]
+    events = var.auto_rollback_events
   }
 
   # You can configure options for a blue/green deployment.
