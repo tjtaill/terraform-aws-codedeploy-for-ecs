@@ -125,8 +125,9 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 # https://www.terraform.io/docs/providers/aws/r/iam_policy.html
-resource "aws_iam_policy" "default" {
+resource "aws_iam_role_policy" "default" {
   name        = local.iam_name
+  role = aws_iam_role.default.id
   policy      = data.aws_iam_policy_document.policy.json
   description = var.description
 }
@@ -210,12 +211,6 @@ data "aws_iam_policy_document" "policy" {
 
     resources = ["*"]
   }
-}
-
-# https://www.terraform.io/docs/providers/aws/r/iam_role_policy_attachment.html
-resource "aws_iam_role_policy_attachment" "default" {
-  role       = aws_iam_role.default.name
-  policy_arn = aws_iam_policy.default.arn
 }
 
 locals {
